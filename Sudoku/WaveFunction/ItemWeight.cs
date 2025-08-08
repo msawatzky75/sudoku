@@ -2,16 +2,27 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Sudoku.WaveFunction;
 
-public class ItemWeight<T> : IComparable<ItemWeight<T>>
+public struct ItemWeight<T>() : IEquatable<ItemWeight<T>>, ICloneable
 {
 	public required T Value { get; set; }
 	[Range(0.0, 1.0)] public double Weight { get; set; } = 0.5;
 
-	public int CompareTo(ItemWeight<T>? other)
-	{
-		if (other == null) return 1;
-		return Weight.CompareTo(other.Weight);
-	}
-	
 	public override string ToString() => Value?.ToString() ?? string.Empty;
+
+	public object Clone() => new ItemWeight<T> { Value = Value, Weight = Weight };
+
+	public bool Equals(ItemWeight<T> other)
+	{
+		return EqualityComparer<T>.Default.Equals(Value, other.Value) && Weight.Equals(other.Weight);
+	}
+
+	public override bool Equals(object? obj)
+	{
+		return obj is ItemWeight<T> other && Equals(other);
+	}
+
+	public override int GetHashCode()
+	{
+		return HashCode.Combine(Value, Weight);
+	}
 }
