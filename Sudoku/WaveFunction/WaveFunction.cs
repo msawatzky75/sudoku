@@ -25,10 +25,14 @@ public class WaveFunction<T>(int size, ItemWeight<T>[] itemWeights, Random rand)
 		(Math.Log(sumWeight) - (sumWeight * Math.Log(sumWeight))) / -sumWeight;
 
 	private static List<ItemWeight<T>>[] CreateCoefficientMatrix(int size, ItemWeight<T>[] items) =>
-		Enumerable.Range(0, size).Select(_ => items.Select(x => x).ToList()).ToArray();
+		Enumerable.Range(0, size)
+			.Select(_ => items.Select(x => x).ToList())
+			.ToArray();
 
 	public List<ItemWeight<T>> GetWeights(int index) => CoefficientMatrix[index];
-	public List<ItemWeight<T>> SetWeights(int index, List<ItemWeight<T>> items) => CoefficientMatrix[index] = items.Clone();
+
+	public List<ItemWeight<T>> SetWeights(int index, List<ItemWeight<T>> items) =>
+		CoefficientMatrix[index] = items.Clone();
 
 	/// <summary>
 	/// TODO: validate that the ItemWeight Param is actually in the matrix first?
@@ -55,9 +59,9 @@ public class WaveFunction<T>(int size, ItemWeight<T>[] itemWeights, Random rand)
 		if (options.Count == 1) return options[0].Value;
 		throw new Exception($"Cell at {index} is not collapsed.");
 	}
-	
+
 	public List<ItemWeight<T>>[] GetMatrix() => CoefficientMatrix;
-	
+
 	public T[] GetAllCollapsed(T nullValue)
 	{
 		return CoefficientMatrix.Select(x =>

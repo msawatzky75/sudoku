@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Diagnostics;
 
 namespace Sudoku.WaveFunction;
@@ -6,24 +5,45 @@ namespace Sudoku.WaveFunction;
 /// <summary>
 /// 
 /// </summary>
-/// <param name="outputSize"></param>
-/// <param name="items"></param>
-/// <param name="rand"></param>
-/// <param name="affectedBy">Given an affected index, and a value placed there, return a list of indices that can no longer have that value.</param>
-/// <param name="nullValue"></param>
 /// <typeparam name="T"></typeparam>
-public class Model<T>(
-	int outputSize,
-	ItemWeight<T>[] items,
-	Random rand,
-	Func<int, T, Func<int, T[]>, int[]> affectedBy,
-	T nullValue)
+public class Model<T> where T : IEquatable<T>
 {
-	public WaveFunction<T> WaveFunction { get; set; } = new(outputSize, items, rand);
-	public ItemWeight<T>[] Items { get; set; } = items;
+	/// <summary>
+	/// Given an index and a value to put there, return a list of indexes that cannot have that same value.
+	/// </summary>
+	private readonly Func<int, T, Func<int, T[]>, int[]> _affectedBy;
 
-	public EventHandler<(int, ItemWeight<T>, int)> OnIteration { get; set; } = delegate { };
-	public EventHandler<(int, StackTrace)> OnBacktrack { get; set; } = delegate { };
+	private readonly T _nullValue;
+
+	/// <summary>
+	/// 
+	/// </summary>
+	/// <param name="outputSize"></param>
+	/// <param name="items"></param>
+	/// <param name="rand"></param>
+	/// <param name="affectedBy">Given an affected index, and a value placed there, return a list of indices that can no longer have that value.</param>
+	/// <param name="nullValue"></param>
+	/// <typeparam name="T"></typeparam>
+	public Model(int outputSize,
+		ItemWeight<T>[] items,
+		Random rand,
+		Func<int, T, Func<int, T[]>, int[]> affectedBy,
+		T nullValue)
+	{
+		_affectedBy = affectedBy;
+		_nullValue = nullValue;
+		Items = items;
+		WaveFunction = new WaveFunction<T>(outputSize, items, rand);
+	}
+
+	public WaveFunction<T> WaveFunction { get; set; }
+	public ItemWeight<T>[] Items { get; set; }
+
+	public EventHandler<(int index, ItemWeight<T> selected)> OnIteration { get; set; } = delegate { };
+
+	public EventHandler<int> OnPropagate { get; set; } = delegate { };
+
+	public EventHandler<int> OnBacktrack { get; set; } = delegate { };
 
 	public T[] Run()
 	{
@@ -39,13 +59,12 @@ public class Model<T>(
 			Console.WriteLine(e);
 		}
 
-		return WaveFunction.GetAllCollapsed(nullValue);
+		return WaveFunction.GetAllCollapsed(_nullValue);
 	}
 
 	public void Iterate(int index, ItemWeight<T> option)
 	{
-		System.Diagnostics.StackTrace stackTrace = new System.Diagnostics.StackTrace();
-		OnIteration(this, (index, option, stackTrace.FrameCount));
+		OnIteration(this, (index, option));
 
 		var blacklist = new List<ItemWeight<T>>();
 		while (!WaveFunction.IsFullyCollapsed())
@@ -55,8 +74,9 @@ public class Model<T>(
 			try
 			{
 				WaveFunction.SetOption(index, option);
+				var propagated = Propagate(index, out propagations);
 				if (WaveFunction.IsFullyCollapsed()) return;
-				if (Propagate(index, out propagations))
+				if (propagated)
 				{
 					var next = GetMinimumEntropyIndex();
 					Iterate(next, WaveFunction.Collapse(next, []));
@@ -65,7 +85,7 @@ public class Model<T>(
 			}
 			catch (IterationException)
 			{
-				OnBacktrack(this, (index, stackTrace));
+				OnBacktrack(this, (index));
 				// just to pop the call stack, see throw below
 			}
 
@@ -94,49 +114,60 @@ public class Model<T>(
 	/// <c>affectedBy</c> delegate.
 	/// </summary>
 	/// <param name="index">Index of collapsed cell</param>
-	/// <param name="propagations">a stack of all constrained indexes, in the order they happened.</param>
+	/// <param name="propagations">A stack of all constrained indexes, in the order they happened.</param>
 	/// <returns>True if propagation was successful, false if there was a failure</returns>
 	public bool Propagate(int index,
 		out Stack<(int index, ItemWeight<T> constrained)> propagations)
 	{
 		// Create a stack of element indexes that were affected, and need those consequences spread.
 		var queue = new Queue<int>();
-		queue.Enqueue(index);
 		propagations = new();
 
-		// Spread consequences
+		OnPropagate(this, index);
+		var possible = WaveFunction.GetWeights(index);
+
+		// cannot propagate a collapsed cell, if it is not collapsed.
+		if (possible.Count != 1)
+			return false;
+
+		// constrain affected from this value
+		var item = possible[0];
+
+		var affected = _affectedBy(index, item.Value,
+			i => WaveFunction.GetWeights(i).Select(x => x.Value).ToArray());
+
+		foreach (var otherIndex in affected)
+		{
+			// if an affected cell is already collapsed, skip it
+			if (WaveFunction.GetWeights(otherIndex).Count == 1) continue;
+
+			// if the affected cell doesn't have this cell's selected option, skip it.
+			if (!WaveFunction.GetWeights(otherIndex).Contains(item)) continue;
+
+			// remove this cell's selected option from affected cell
+			propagations.Push((otherIndex, item));
+			WaveFunction.ConstrainOption(otherIndex, item);
+
+			// if the other cell is collapsed, propagate
+			var other = WaveFunction.GetWeights(otherIndex);
+			if (other.Count == 1)
+				queue.Enqueue(otherIndex);
+
+			// TODO: need someway to detect if a propagation failed, but this isn't it...
+			// if the available options are less than the number of other indices to propagate, we have an issue 
+			// else if (other.Count < queue.Count)
+			// 	return false;
+		}
+
+
 		while (queue.Count > 0)
 		{
-			var workingIndex = queue.Dequeue();
-			var possible = WaveFunction.GetWeights(workingIndex);
-			if (possible.Count != 1) continue;
+			if (!Propagate(queue.Dequeue(), out var subPropagations))
+				return false;
 
-			// constrain affected from this value
-			var item = possible[0];
-
-			var affected = affectedBy(workingIndex, item.Value,
-				i => WaveFunction.GetWeights(i).Select(x => x.Value).ToArray());
-
-			foreach (var otherIndex in affected)
+			foreach (var subPropagation in subPropagations)
 			{
-				if (WaveFunction.GetWeights(otherIndex).Count == 1) continue;
-				if (WaveFunction.GetWeights(otherIndex).Contains(item))
-				{
-					propagations.Push((otherIndex, item));
-					WaveFunction.ConstrainOption(otherIndex, item);
-				}
-
-				var other = WaveFunction.GetWeights(otherIndex);
-				if (other.Count == 1)
-				{
-					queue.Enqueue(otherIndex);
-				}
-
-				// if the available options are less than the number of other indices to propagate, we have an issue
-				if (other.Count < queue.Count)
-				{
-					return false;
-				}
+				propagations.Push(subPropagation);
 			}
 		}
 
@@ -164,4 +195,17 @@ public class Model<T>(
 	}
 
 	public T[] GetCollapsed(T nullValue) => WaveFunction.GetAllCollapsed(nullValue);
+
+	public bool SetInitial(T[] initialBoard)
+	{
+		for (int i = 0; i < initialBoard.Length; i++)
+		{
+			if (initialBoard[i].Equals(_nullValue)) continue;
+			WaveFunction.SetOption(i, new ItemWeight<T> { Value = initialBoard[i], Weight = 1 });
+			if (!Propagate(i, out var propagated))
+				return false;
+		}
+
+		return true;
+	}
 }

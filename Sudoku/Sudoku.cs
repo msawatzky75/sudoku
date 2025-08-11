@@ -2,7 +2,7 @@ using Sudoku.WaveFunction;
 
 namespace Sudoku;
 
-public class Sudoku<T> where T : IConvertible
+public class Sudoku<T> where T : IConvertible, IEquatable<T>
 {
 	/* 9x9 (gridsize 3) indexes
 	  0, 1, 2, 3, 4, 5, 6, 7, 8,
@@ -24,7 +24,8 @@ public class Sudoku<T> where T : IConvertible
 
 	public readonly Model<T> Model;
 
-	public Sudoku(T nullValue, int gridSize = 3, ItemWeight<T>[]? cellWeights = null, Random? random = null)
+	public Sudoku(T[] initialBoard, T nullValue, 
+		int gridSize = 3, ItemWeight<T>[]? cellWeights = null, Random? random = null)
 	{
 		var finalSize = (int)Math.Pow(gridSize, 4);
 		NullValue = nullValue;
@@ -41,6 +42,18 @@ public class Sudoku<T> where T : IConvertible
 			CreateGetAffectedBy(GridSize),
 			NullValue
 		);
+		Write();
+		Model.OnPropagate += (sender, index) => Console.WriteLine($"Propagating {index}");
+		Model.WaveFunction.ElementCollapsed += (sender, index) => Write(index);
+		if (!Model.SetInitial(initialBoard))
+		{
+			Console.WriteLine("Failed to set initial");
+			Console.WriteLine("Is the sudoku unsolvable?");
+		}
+
+		Console.Clear();
+		Console.WriteLine("Initialized Sudoku");
+		Write();
 	}
 
 	public T[] Run()
@@ -49,21 +62,21 @@ public class Sudoku<T> where T : IConvertible
 		Model.OnIteration += (sender, tuple) =>
 		{
 			iterations++;
-			var (index, option, stackFrames) = tuple;
+			var (index, option) = tuple;
 			Console.Clear();
-			Console.WriteLine($"Iterations: {iterations}");
-			WriteBoard(Model.WaveFunction.GetMatrix().ToBoard(NullValue), GridSize, GetAffected(index, GridSize));
+			Console.WriteLine($"Iterations: {iterations}. Index: {index}. Value: {option.Value}.");
+			Write(index);
 		};
 
 		ulong totalBacktracks = 0;
 		List<int> backtracks = new List<int>();
-		Model.OnBacktrack += (sender, tuple) =>
+		Model.OnBacktrack += (sender, index) =>
 		{
 			totalBacktracks++;
 			if (totalBacktracks < 1_000) return;
-			var (index, stackFrames) = tuple;
 			backtracks.Add(index);
-			var rankedBacktracks = backtracks.GroupBy(i => i).OrderBy(g => g.Count()).Select(g => (g.Key, g.Count())).ToList();
+			var rankedBacktracks =
+				backtracks.GroupBy(i => i).OrderBy(g => g.Count()).Select(g => (g.Key, g.Count())).ToList();
 			if (rankedBacktracks.Count() <= 1) return;
 			Console.Clear();
 			Console.WriteLine(
@@ -71,6 +84,13 @@ public class Sudoku<T> where T : IConvertible
 			// Console.WriteLine(stackFrames);
 		};
 		return Model.Run();
+	}
+
+	public void Write(int index = -1)
+	{
+		var affected = index >= 0 ? GetAffected(index, GridSize) : [];
+		WriteBoard(Model.WaveFunction.GetMatrix().ToBoard(NullValue), GridSize, affected);
+		Console.WriteLine("===");
 	}
 
 

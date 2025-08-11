@@ -13,7 +13,7 @@ public struct ItemWeight<T>() : IEquatable<ItemWeight<T>>, ICloneable
 
 	public bool Equals(ItemWeight<T> other)
 	{
-		return EqualityComparer<T>.Default.Equals(Value, other.Value) && Weight.Equals(other.Weight);
+		return EqualityComparer<T>.Default.Equals(Value, other.Value);
 	}
 
 	public override bool Equals(object? obj)
@@ -23,6 +23,6 @@ public struct ItemWeight<T>() : IEquatable<ItemWeight<T>>, ICloneable
 
 	public override int GetHashCode()
 	{
-		return HashCode.Combine(Value, Weight);
+		return Value!.GetHashCode();
 	}
 }

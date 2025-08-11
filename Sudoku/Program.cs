@@ -29,24 +29,63 @@ ItemWeight<char>[] weights =
 
 var gridSize = 3;
 
+char[] blank =
+[
+	' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+	' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+	' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+
+	' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+	' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+	' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+
+	' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+	' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+	' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+];
+
+char[] initialBoard;
+
+initialBoard =
+[
+	'7', ' ', '5', '9', ' ', ' ', ' ', ' ', '8',
+	' ', ' ', '9', ' ', ' ', '1', ' ', '3', ' ',
+	' ', '8', ' ', '6', ' ', ' ', '2', ' ', '5',
+
+	'8', ' ', ' ', '3', ' ', ' ', '4', '5', '9',
+	' ', '1', ' ', '5', ' ', '2', ' ', '7', ' ',
+	'5', '7', '3', ' ', ' ', '6', ' ', ' ', '2',
+
+	'2', ' ', '7', ' ', ' ', '9', ' ', '8', ' ',
+	' ', '9', ' ', '7', ' ', ' ', '6', ' ', ' ',
+	'1', ' ', ' ', ' ', ' ', '8', '9', ' ', '7',
+];
+
+// initialBoard =
+// [
+// 	'6', ' ', ' ', ' ', '3', '1', ' ', ' ', ' ',
+// 	'9', ' ', '5', ' ', ' ', ' ', '2', '8', '1',
+// 	' ', ' ', ' ', ' ', ' ', ' ', ' ', '3', '6',
+//
+// 	'5', ' ', '1', ' ', '4', '2', ' ', ' ', '3',
+// 	'2', ' ', ' ', ' ', '1', ' ', ' ', ' ', '8',
+// 	'4', ' ', ' ', '7', '8', ' ', ' ', ' ', '2',
+//
+// 	'3', '7', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+// 	'8', '4', '9', ' ', ' ', ' ', '1', ' ', '7',
+// 	' ', ' ', ' ', '6', '7', ' ', ' ', ' ', '9',
+// ];
+
+// initialBoard = blank;
+
+
 var sudoku = new Sudoku<char>(
+	initialBoard,
 	' ',
 	random: random,
 	gridSize: 3,
 	cellWeights: weights[0..(int)Math.Pow(gridSize, 2)]
 );
-//
-// sudoku.Model.WaveFunction.ElementCollapsed += (_, i) =>
-// {
-// 	Console.Clear();
-// 	var board = sudoku.Model.GetCollapsed(' ');
-// 	var highlights = Sudoku<char>.IndexesInSection(gridSize, i)
-// 		.Concat(Sudoku<char>.IndexesInRow(gridSize, i))
-// 		.Concat(Sudoku<char>.IndexesInColumn(gridSize, i));
-// 	Sudoku<char>.WriteBoard(board, gridSize, highlights.ToArray());
-//
-// 	// Thread.Sleep(50);
-// };
 
 var output = sudoku.Run();
 Console.Clear();
