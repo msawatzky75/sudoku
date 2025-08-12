@@ -111,13 +111,12 @@ public class Model<T> where T : IEquatable<T>
 
 	/// <summary>
 	/// Propagates the consequences of a collapsed cell. (removes that cell's value from affected indexes via
-	/// <c>affectedBy</c> delegate.
+	/// <c>affectedBy</c> delegate.)
 	/// </summary>
 	/// <param name="index">Index of collapsed cell</param>
 	/// <param name="propagations">A stack of all constrained indexes, in the order they happened.</param>
 	/// <returns>True if propagation was successful, false if there was a failure</returns>
-	public bool Propagate(int index,
-		out Stack<(int index, ItemWeight<T> constrained)> propagations)
+	public bool Propagate(int index, out Stack<(int index, ItemWeight<T> constrained)> propagations)
 	{
 		// Create a stack of element indexes that were affected, and need those consequences spread.
 		var queue = new Queue<int>();
@@ -139,7 +138,11 @@ public class Model<T> where T : IEquatable<T>
 		foreach (var otherIndex in affected)
 		{
 			// if an affected cell is already collapsed, skip it
-			if (WaveFunction.GetWeights(otherIndex).Count == 1) continue;
+			if (WaveFunction.GetWeights(otherIndex).Count == 1)
+			{
+				if (WaveFunction.GetWeights(otherIndex).Contains(item)) return false;
+				continue;
+			}
 
 			// if the affected cell doesn't have this cell's selected option, skip it.
 			if (!WaveFunction.GetWeights(otherIndex).Contains(item)) continue;
@@ -152,11 +155,8 @@ public class Model<T> where T : IEquatable<T>
 			var other = WaveFunction.GetWeights(otherIndex);
 			if (other.Count == 1)
 				queue.Enqueue(otherIndex);
-
-			// TODO: need someway to detect if a propagation failed, but this isn't it...
-			// if the available options are less than the number of other indices to propagate, we have an issue 
-			// else if (other.Count < queue.Count)
-			// 	return false;
+			else if (other.Count == 0)
+				return false;
 		}
 
 
