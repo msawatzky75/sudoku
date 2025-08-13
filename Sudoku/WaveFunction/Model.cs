@@ -47,6 +47,9 @@ public class Model<T> where T : IEquatable<T>
 
 	public T[] Run()
 	{
+		if (WaveFunction.IsFullyCollapsed())
+			return WaveFunction.GetAllCollapsed(_nullValue);
+
 		var index = GetMinimumEntropyIndex();
 		var option = WaveFunction.Collapse(index, []);
 		try

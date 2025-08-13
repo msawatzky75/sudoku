@@ -24,7 +24,7 @@ public class Sudoku<T> where T : IConvertible, IEquatable<T>
 
 	public readonly Model<T> Model;
 
-	public Sudoku(T[] initialBoard, T nullValue, 
+	public Sudoku(T[] initialBoard, T nullValue,
 		int gridSize = 3, ItemWeight<T>[]? cellWeights = null, Random? random = null)
 	{
 		var finalSize = (int)Math.Pow(gridSize, 4);
@@ -43,7 +43,6 @@ public class Sudoku<T> where T : IConvertible, IEquatable<T>
 			NullValue
 		);
 		Write();
-		Model.OnPropagate += (sender, index) => Console.WriteLine($"Propagating {index}");
 		Model.WaveFunction.ElementCollapsed += (sender, index) => Write(index);
 		if (!Model.SetInitial(initialBoard))
 		{
@@ -58,31 +57,6 @@ public class Sudoku<T> where T : IConvertible, IEquatable<T>
 
 	public T[] Run()
 	{
-		ulong iterations = 0;
-		Model.OnIteration += (sender, tuple) =>
-		{
-			iterations++;
-			var (index, option) = tuple;
-			Console.Clear();
-			Console.WriteLine($"Iterations: {iterations}. Index: {index}. Value: {option.Value}.");
-			Write(index);
-		};
-
-		ulong totalBacktracks = 0;
-		List<int> backtracks = new List<int>();
-		Model.OnBacktrack += (sender, index) =>
-		{
-			totalBacktracks++;
-			if (totalBacktracks < 1_000) return;
-			backtracks.Add(index);
-			var rankedBacktracks =
-				backtracks.GroupBy(i => i).OrderBy(g => g.Count()).Select(g => (g.Key, g.Count())).ToList();
-			if (rankedBacktracks.Count() <= 1) return;
-			Console.Clear();
-			Console.WriteLine(
-				$"least common backtrack : {rankedBacktracks.Skip(1).First()}");
-			// Console.WriteLine(stackFrames);
-		};
 		return Model.Run();
 	}
 

@@ -2,7 +2,7 @@
 using Sudoku.WaveFunction;
 
 
-var seed = 4;
+var seed = new Random().Next();
 if (args.Length > 0 && !string.IsNullOrEmpty(args[0]))
 	int.TryParse(args[0], out seed);
 var random = new Random(seed);
@@ -27,22 +27,9 @@ ItemWeight<char>[] weights =
 	new() { Value = 'F' },
 ];
 
-var gridSize = 3;
+var gridSize = 4;
 
-char[] blank =
-[
-	' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
-	' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
-	' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
-
-	' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
-	' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
-	' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
-
-	' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
-	' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
-	' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
-];
+char[] blank = Enumerable.Repeat(' ', (int)Math.Pow(gridSize, 4)).ToArray();
 
 char[] initialBoard;
 
@@ -76,24 +63,21 @@ initialBoard =
 // 	' ', ' ', ' ', '6', '7', ' ', ' ', ' ', '9',
 // ];
 
-// initialBoard = blank;
+initialBoard = blank;
 
 
 var sudoku = new Sudoku<char>(
 	initialBoard,
 	' ',
 	random: random,
-	gridSize: 3,
+	gridSize: gridSize,
 	cellWeights: weights[0..(int)Math.Pow(gridSize, 2)]
 );
 
 var output = sudoku.Run();
 Console.Clear();
 var valid = Sudoku<char>.IsValidSudoku(output, gridSize, ' ', out var errors);
-if (!valid)
-	Console.WriteLine("Invalid board");
-else
-	Console.WriteLine("Valid Board");
+Console.WriteLine(!valid ? "Invalid board" : "Valid Board");
 
 Sudoku<char>.WriteBoard(output, gridSize, errors.ToArray());
 
